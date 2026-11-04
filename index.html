@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Railway Reservation Analyzer | PS No. 84</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    :root {
+      --bg-dark: #0a0f1d;
+      --card-bg: rgba(18, 26, 47, 0.78);
+      --card-border: rgba(99, 102, 241, 0.18);
+      --accent-rail: #38bdf8;
+      --accent-gold: #fbbf24;
+      --accent-green: #34d399;
+      --accent-rose: #f43f5e;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+
+    code, pre, .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.6) 0%, transparent 100%);
+      color: #f1f5f9;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Glassmorphism */
+    .glass-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--card-border);
+      border-radius: 1.25rem;
+    }
+
+    .glass-card-hover {
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .glass-card-hover:hover {
+      transform: translateY(-3px);
+      border-color: rgba(99, 102, 241, 0.4);
+      box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.5), 0 0 20px rgba(56, 189, 248, 0.12);
+    }
+
+    /* Smooth Chart Bars */
+    .bar-transition {
+      transition: height 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    /* Tab indicator transition */
+    .tab-btn {
+      position: relative;
+      transition: all 0.25s ease;
+    }
+    .tab-btn.active {
+      color: #ffffff;
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+  </style>
+</head>
+<body class="p-3 md:p-6 lg:p-8">
+
+  <!-- Main Container -->
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- Top Navigation & Branding -->
+    <header class="glass-card p-4 md:p-6 flex flex-col md:flex-row items-center justify-between gap-4 border-b border-indigo-500/20">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-2xl shadow-lg shadow-sky-500/25">
+          🚆
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl md:text-2xl font-extrabold tracking-tight bg-gradient-to-r from-sky-400 via-indigo-200 to-pink-300 bg-clip-text text-transparent">
+              Railway Reservation Analyzer
+            </h1>
+            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/30">
+              PS No. 84
+            </span>
+          </div>
+          <p class="text-xs md:text-sm text-slate-400 mt-0.5">
+            Bookings, confirmed revenue calculation & ticket status intelligence per train
+          </p>
+        </div>
+      </div>
+
+      <!-- Action Utilities -->
+      <div class="flex items-center gap-2 md:gap-3 flex-wrap">
+        <button id="honkBtn" onclick="honkTrainHorn()" class="group relative px-4 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-semibold text-xs md:text-sm flex items-center gap-2 transition active:scale-95 shadow-sm">
+          <span class="text-base group-hover:scale-125 transition-transform duration-200">📢</span>
+          <span>Honk Horn!</span>
+        </button>
+
+        <label class="px-3.5 py-2 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-sky-300 font-semibold text-xs md:text-sm flex items-center gap-2 cursor-pointer transition active:scale-95">
+          <span>📁</span>
+          <span>Upload CSV</span>
+          <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="handleFileUpload(event)" />
+        </label>
+
+        <button onclick="resetDefaultData()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs md:text-sm font-medium transition active:scale-95">
+          ↺ Reset Data
+        </button>
+      </div>
+    </header>
+
+    <!-- Interactive Animated Railway Canvas Stage -->
+    <div class="relative glass-card overflow-hidden p-0 border border-sky-500/20 shadow-2xl">
+      <!-- Sky & Canvas Area -->
+      <div class="relative h-44 sm:h-52 md:h-64 w-full bg-gradient-to-b from-[#060a16] via-[#0d172e] to-[#122044] overflow-hidden">
+        
+        <!-- Canvas for 60fps Train, Tracks, Parallax Mountains & Electricity Sparks -->
+        <canvas id="railwayCanvas" class="w-full h-full block cursor-pointer" onclick="honkTrainHorn()"></canvas>
+
+        <!-- Speed & Control Overlay HUD -->
+        <div class="absolute top-3 left-3 flex items-center gap-2 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-700/60 text-xs">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          <span class="text-slate-400">Signal:</span>
+          <span id="signalStatusText" class="font-bold text-emerald-400 uppercase tracking-wide">CLEAR (GREEN)</span>
+        </div>
+
+        <div class="absolute top-3 right-3 flex items-center gap-2 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-700/60 text-xs">
+          <span class="text-slate-400">Loco:</span>
+          <span class="font-bold text-sky-300">WAP-7 Indian Railways</span>
+          <span class="text-slate-500">|</span>
+          <span id="speedDisplay" class="font-mono font-bold text-amber-400">110 km/h</span>
+        </div>
+
+        <!-- Speed Preset Pills (Floating bottom left) -->
+        <div class="absolute bottom-3 left-3 flex items-center gap-1.5 bg-slate-950/70 backdrop-blur-md p-1.5 rounded-xl border border-slate-800 text-[11px]">
+          <span class="text-slate-400 px-2 font-medium hidden sm:inline">Speed:</span>
+          <button onclick="setTrainSpeed(0)" id="spd0" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition">Halt</button>
+          <button onclick="setTrainSpeed(40)" id="spd40" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition">Slow (40)</button>
+          <button onclick="setTrainSpeed(110)" id="spd110" class="px-2.5 py-1 rounded-lg bg-sky-500/20 text-sky-300 font-semibold border border-sky-500/40 transition">Express (110)</button>
+          <button onclick="setTrainSpeed(180)" id="spd180" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition">Vande Bharat (180)</button>
+        </div>
+
+        <!-- Hint on Canvas -->
+        <div class="absolute bottom-3 right-3 text-[10px] text-slate-400/80 bg-slate-950/60 px-2 py-1 rounded hidden sm:block">
+          💡 Click canvas to sound horn!
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Cleaning & Quality Banner (Step 1 to Step 4 from Python load_data()) -->
+    <div id="dataHealthBanner" class="glass-card p-4 flex flex-col md:flex-row items-center justify-between gap-3 border-amber-500/20 bg-amber-500/5">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 text-lg">
+          ⚠️
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-semibold text-slate-200">Data Preprocessing & Fare Validation</span>
+            <span id="dataStatusBadge" class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-medium">
+              Verified
+            </span>
+          </div>
+          <p id="dataHealthSummary" class="text-xs text-slate-400">
+            Coerced non-numeric fares to NaN and filtered out invalid PNR records matching Python script logic.
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="toggleWarningLogModal()" class="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-medium transition flex items-center gap-1.5">
+          <span>📜 View Skipped PNRs</span>
+          <span id="skippedCountBadge" class="bg-amber-400 text-slate-950 text-[10px] font-bold px-1.5 py-0.2 rounded-full">0</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 4 High-Impact KPI Overview Cards with Animated Counters -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      
+      <!-- Card 1: Total Bookings -->
+      <div class="glass-card p-5 glass-card-hover relative overflow-hidden group">
+        <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-sky-500/10 rounded-full blur-xl group-hover:bg-sky-500/20 transition-all"></div>
+        <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
+          <span>Valid Bookings</span>
+          <span class="text-sky-400 text-lg">🎟️</span>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpiTotalBookings" class="text-3xl md:text-4xl font-extrabold text-white font-mono">0</span>
+          <span class="text-xs text-slate-400">tickets</span>
+        </div>
+        <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
+          <span class="text-emerald-400">●</span>
+          <span>Analysed from bookings.csv</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Total Confirmed Revenue -->
+      <div class="glass-card p-5 glass-card-hover relative overflow-hidden group">
+        <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition-all"></div>
+        <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
+          <span>Confirmed Revenue</span>
+          <span class="text-emerald-400 text-lg">💰</span>
+        </div>
+        <div class="mt-3 flex items-baseline gap-1">
+          <span class="text-xl font-bold text-emerald-400">₹</span>
+          <span id="kpiTotalRevenue" class="text-3xl md:text-4xl font-extrabold text-emerald-300 font-mono">0</span>
+        </div>
+        <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
+          <span class="text-emerald-400">✓</span>
+          <span>Confirmed tickets only (Script Opt 2)</span>
+        </div>
+      </div>
+
+      <!-- Card 3: Active Trains -->
+      <div class="glass-card p-5 glass-card-hover relative overflow-hidden group">
+        <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl group-hover:bg-indigo-500/20 transition-all"></div>
+        <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
+          <span>Trains Monitored</span>
+          <span class="text-indigo-400 text-lg">🚂</span>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpiTrainCount" class="text-3xl md:text-4xl font-extrabold text-indigo-300 font-mono">0</span>
+          <span class="text-xs text-slate-400">routes</span>
+        </div>
+        <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
+          <span class="text-indigo-400">★</span>
+          <span id="kpiTopTrain">Gondwana / Rajdhani</span>
+        </div>
+      </div>
+
+      <!-- Card 4: Ticket Status Breakdown Quickview -->
+      <div class="glass-card p-5 glass-card-hover relative overflow-hidden group">
+        <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-purple-500/10 rounded-full blur-xl group-hover:bg-purple-500/20 transition-all"></div>
+        <div class="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
+          <span>Confirmation Rate</span>
+          <span class="text-purple-400 text-lg">📊</span>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpiConfirmRate" class="text-3xl md:text-4xl font-extrabold text-purple-300 font-mono">0%</span>
+          <span id="kpiConfirmCount" class="text-xs text-slate-400">(0 / 0)</span>
+        </div>
+        <!-- Mini Tri-color Bar -->
+        <div class="mt-3 w-full h-2 rounded-full bg-slate-800 overflow-hidden flex">
+          <div id="miniBarConfirmed" class="bg-emerald-400 h-full transition-all duration-700" style="width: 0%"></div>
+          <div id="miniBarWaiting" class="bg-amber-400 h-full transition-all duration-700" style="width: 0%"></div>
+          <div id="miniBarCancelled" class="bg-rose-500 h-full transition-all duration-700" style="width: 0%"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Navigation Menu Tabs (1: Bookings, 2: Revenue, 3: Status Breakdown, 4: Raw Data & Add) -->
+    <div class="flex items-center gap-2 p-1.5 glass-card overflow-x-auto">
+      <button onclick="switchTab('tab-bookings')" id="btn-tab-bookings" class="tab-btn active px-4 py-2.5 rounded-xl text-xs md:text-sm font-semibold flex items-center gap-2 border border-transparent whitespace-nowrap">
+        <span>📊 1. Bookings per Train</span>
+      </button>
+      <button onclick="switchTab('tab-revenue')" id="btn-tab-revenue" class="tab-btn px-4 py-2.5 rounded-xl text-xs md:text-sm font-semibold text-slate-400 hover:text-white flex items-center gap-2 border border-transparent whitespace-nowrap">
+        <span>💰 2. Revenue per Train (Confirmed)</span>
+      </button>
+      <button onclick="switchTab('tab-status')" id="btn-tab-status" class="tab-btn px-4 py-2.5 rounded-xl text-xs md:text-sm font-semibold text-slate-400 hover:text-white flex items-center gap-2 border border-transparent whitespace-nowrap">
+        <span>🎫 3. Tickets by Status</span>
+      </button>
+      <button onclick="switchTab('tab-data')" id="btn-tab-data" class="tab-btn px-4 py-2.5 rounded-xl text-xs md:text-sm font-semibold text-slate-400 hover:text-white flex items-center gap-2 border border-transparent whitespace-nowrap">
+        <span>📋 4. Records & Data Explorer</span>
+      </button>
+    </div>
+
+    <!-- TAB 1: BOOKINGS PER TRAIN (Option 1) -->
+    <section id="tab-bookings" class="space-y-6">
+      <div class="glass-card p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div>
+            <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+              <span>Bookings per Train</span>
+              <span class="text-xs font-normal text-slate-400 bg-slate-800 px-2 py-0.5 rounded">Option 1</span>
+            </h2>
+            <p class="text-xs md:text-sm text-slate-400 mt-1">
+              Total volume of passenger reservations handled across each train route.
+            </p>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-slate-400">Total Bookings:</span>
+            <span id="tab1TotalCount" class="px-3 py-1 bg-sky-500/20 text-sky-300 font-mono font-bold text-sm rounded-lg border border-sky-500/30">
+              0
+            </span>
+          </div>
+        </div>
+
+        <!-- Animated Chart Display Area -->
+        <div class="mt-6">
+          <div id="bookingsChartContainer" class="space-y-4">
+            <!-- Dynamic Horizontal Animated Bar List -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: REVENUE PER TRAIN (Option 2) -->
+    <section id="tab-revenue" class="space-y-6 hidden">
+      <div class="glass-card p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-lg md:text-xl font-bold text-white">Revenue per Train</h2>
+              <span class="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                Confirmed Only
+              </span>
+              <span class="text-xs font-normal text-slate-400 bg-slate-800 px-2 py-0.5 rounded">Option 2</span>
+            </div>
+            <p class="text-xs md:text-sm text-slate-400 mt-1">
+              Fares aggregated for confirmed tickets, sorted in descending order (highest revenue first).
+            </p>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-slate-400">Total Confirmed Revenue:</span>
+            <span id="tab2TotalRevenue" class="px-3 py-1 bg-emerald-500/20 text-emerald-300 font-mono font-bold text-sm rounded-lg border border-emerald-500/30">
+              ₹0
+            </span>
+          </div>
+        </div>
+
+        <!-- Revenue Bars Container -->
+        <div class="mt-6">
+          <div id="revenueChartContainer" class="space-y-4">
+            <!-- Dynamic Revenue Bars -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: TICKETS BY STATUS (Option 3) -->
+    <section id="tab-status" class="space-y-6 hidden">
+      
+      <!-- All Trains Overview -->
+      <div class="glass-card p-6">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+          <div>
+            <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+              <span>Overall Status Summary</span>
+              <span class="text-xs font-normal text-slate-400 bg-slate-800 px-2 py-0.5 rounded">All Trains</span>
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Aggregated ticket statuses across the entire railway system</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <!-- Confirmed -->
+          <div class="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Confirmed</div>
+              <div id="statAllConfirmed" class="text-2xl md:text-3xl font-extrabold text-emerald-300 font-mono mt-1">0</div>
+              <div id="statAllConfirmedPct" class="text-xs text-slate-400 mt-0.5">0% of total</div>
+            </div>
+            <div class="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-xl text-emerald-400">
+              ✓
+            </div>
+          </div>
+
+          <!-- Waiting -->
+          <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold text-amber-400 uppercase tracking-wider">Waiting List</div>
+              <div id="statAllWaiting" class="text-2xl md:text-3xl font-extrabold text-amber-300 font-mono mt-1">0</div>
+              <div id="statAllWaitingPct" class="text-xs text-slate-400 mt-0.5">0% of total</div>
+            </div>
+            <div class="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center text-xl text-amber-400">
+              ⏳
+            </div>
+          </div>
+
+          <!-- Cancelled -->
+          <div class="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold text-rose-400 uppercase tracking-wider">Cancelled</div>
+              <div id="statAllCancelled" class="text-2xl md:text-3xl font-extrabold text-rose-300 font-mono mt-1">0</div>
+              <div id="statAllCancelledPct" class="text-xs text-slate-400 mt-0.5">0% of total</div>
+            </div>
+            <div class="w-12 h-12 rounded-full bg-rose-500/20 flex items-center justify-center text-xl text-rose-400">
+              ✕
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Each Train Breakdown -->
+      <div class="glass-card p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div>
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>Status Breakdown by Train</span>
+              <span class="text-xs font-normal text-slate-400 bg-slate-800 px-2 py-0.5 rounded">Option 3 Detail</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-0.5">Confirmed, Waiting, and Cancelled counts for each train</p>
+          </div>
+          <div>
+            <input type="text" id="trainStatusSearch" oninput="renderStatusPerTrain()" placeholder="Search train..." class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500" />
+          </div>
+        </div>
+
+        <div id="trainStatusListContainer" class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Dynamically populated cards for each train -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 4: RAW DATA & LOGS -->
+    <section id="tab-data" class="space-y-6 hidden">
+      <div class="glass-card p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div>
+            <h2 class="text-lg font-bold text-white">Records Explorer & Data Operations</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Inspect all rows, view cleaning warnings, or add new test reservations</p>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button onclick="openAddBookingModal()" class="px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs transition flex items-center gap-1.5">
+              <span>+</span>
+              <span>Add Booking</span>
+            </button>
+            <button onclick="downloadCleanedCsv()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 font-medium transition">
+              ⬇ Export Cleaned CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="mt-4 flex flex-wrap items-center gap-3 text-xs">
+          <input type="text" id="pnrFilterInput" oninput="renderRawDataTable()" placeholder="Filter by PNR, Train, or Class..." class="px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 flex-1 min-w-[200px]" />
+          
+          <select id="statusFilterSelect" onchange="renderRawDataTable()" class="px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 focus:outline-none focus:border-sky-500">
+            <option value="ALL">All Statuses</option>
+            <option value="Confirmed">Confirmed</option>
+            <option value="Waiting">Waiting</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+
+        <!-- Table -->
+        <div class="mt-4 overflow-x-auto rounded-xl border border-slate-800">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/90 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-3">#</th>
+                <th class="p-3">PNR</th>
+                <th class="p-3">Train</th>
+                <th class="p-3">Class</th>
+                <th class="p-3">Fare (₹)</th>
+                <th class="p-3">Status</th>
+                <th class="p-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="rawTableBody" class="divide-y divide-slate-800/60 font-mono">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="text-center py-4 text-xs text-slate-500 border-t border-slate-800/60">
+      Railway Reservation Analyzer (PS No. 84) • Designed with Python & HTML5 Canvas
+    </footer>
+
+  </div>
+
+  <!-- Warning Modal (Skipped PNRs log from Step 3 in Python) -->
+  <div id="warningModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 hidden">
+    <div class="glass-card max-w-lg w-full p-6 border-amber-500/40 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2 text-amber-400 font-bold text-base">
+          <span>⚠️</span>
+          <span>Data Cleaning Warnings (Step 3)</span>
+        </div>
+        <button onclick="toggleWarningLogModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-300">
+        The Python script identifies any row with invalid, non-numeric fares (such as strings or negative values) and skips them during analysis:
+      </p>
+
+      <div id="warningLogsContainer" class="max-h-60 overflow-y-auto space-y-2 p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs">
+        <!-- Warnings printed here -->
+      </div>
+
+      <div class="flex justify-end pt-2">
+        <button onclick="toggleWarningLogModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold">
+          Close Log
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Booking Modal -->
+  <div id="addBookingModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 hidden">
+    <div class="glass-card max-w-md w-full p-6 border-sky-500/30 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span>🚆</span>
+          <span>Add New Reservation</span>
+        </h3>
+        <button onclick="closeAddBookingModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+      </div>
+
+      <form id="addBookingForm" onsubmit="handleNewBookingSubmit(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1 font-medium">PNR Number</label>
+          <input type="text" id="newPnr" required placeholder="1011" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-sky-500" />
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1 font-medium">Train Name</label>
+          <input type="text" id="newTrain" required placeholder="Rajdhani / Shatabdi / Gondwana / Duranto" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-sky-500" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Class</label>
+            <input type="text" id="newClass" required placeholder="3A / CC / SL / 1A" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-sky-500" />
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Fare (₹)</label>
+            <input type="text" id="newFare" required placeholder="1500 (or 'abc' to test)" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-sky-500" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1 font-medium">Ticket Status</label>
+          <select id="newStatus" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-sky-500">
+            <option value="Confirmed">Confirmed</option>
+            <option value="Waiting">Waiting</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3">
+          <button type="button" onclick="closeAddBookingModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition">Save Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 right-6 px-4 py-3 rounded-xl bg-slate-900/95 border border-sky-500/40 text-sky-200 text-xs shadow-2xl flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none z-50">
+    <span id="toastIcon">✨</span>
+    <span id="toastMsg">Action completed successfully</span>
+  </div>
+
+  <!-- APPLICATION LOGIC & ANIMATIONS -->
+  <script>
+    // --- Exact Dataset from bookings.csv in D:\project ---
+    const DEFAULT_CSV_TEXT = `PNR,Train,Class,Fare,Status
+1001,Shatabdi,CC,950,Confirmed
+1002,Shatabdi,CC,950,Confirmed
+1003,Shatabdi,EC,1800,Waiting
+1004,Rajdhani,3A,1700,Confirmed
+1005,Rajdhani,3A,1700,Cancelled
+1006,Rajdhani,2A,2400,Confirmed
+1007,Gondwana,SL,520,Confirmed
+1008,Gondwana,SL,520,Waiting
+1009,Gondwana,3A,1500,Confirmed
+1010,Gondwana,SL,520,Confirmed
+1235,Duranto,1A,1500,Waiting
+1269,Duranto,CC,1896,Confirmed
+1266,Duranto,3A,5000,Cancelled
+1011,Gondwana,SL,abc,Confirmed`;
+
+    let rawRecords = [];
+    let validRecords = [];
+    let skippedRecords = [];
+
+    // --- Web Audio API for Authentic Indian Railways Horn ---
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function honkTrainHorn() {
+      try {
+        const ctx = getAudioContext();
+        const now = ctx.currentTime;
+
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+
+        osc1.type = 'sawtooth';
+        osc2.type = 'sawtooth';
+
+        // 311 Hz + 370 Hz dual-tone chime
+        osc1.frequency.setValueAtTime(311, now);
+        osc1.frequency.linearRampToValueAtTime(316, now + 0.15);
+        osc1.frequency.linearRampToValueAtTime(311, now + 0.9);
+
+        osc2.frequency.setValueAtTime(370, now);
+        osc2.frequency.linearRampToValueAtTime(376, now + 0.15);
+        osc2.frequency.linearRampToValueAtTime(370, now + 0.9);
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1400, now);
+
+        gainNode.gain.setValueAtTime(0, now);
+        gainNode.gain.linearRampToValueAtTime(0.2, now + 0.05);
+        gainNode.gain.setValueAtTime(0.2, now + 0.7);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+
+        osc1.connect(filter);
+        osc2.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(ctx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 1.25);
+        osc2.stop(now + 1.25);
+
+        showToast("📢 Train Horn Sounded!", "info");
+      } catch (e) {
+        console.warn("Audio Context error:", e);
+      }
+    }
+
+    // --- CSV Parsing Engine ---
+    function parseCsvString(csvString) {
+      const lines = csvString.trim().split(/\r?\n/);
+      if (lines.length < 2) return [];
+
+      const headers = lines[0].split(',').map(h => h.trim());
+      const records = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const values = line.split(',').map(v => v.trim());
+        const record = {};
+        headers.forEach((h, idx) => {
+          record[h] = values[idx] !== undefined ? values[idx] : "";
+        });
+        records.push(record);
+      }
+      return records;
+    }
+
+    function processDataset(records) {
+      rawRecords = records;
+      validRecords = [];
+      skippedRecords = [];
+
+      // Step 2, 3, 4 from Python script: Coerce Fare to number and filter NaN / non-positive
+      records.forEach((row, index) => {
+        const rawFare = row.Fare;
+        const parsedFare = parseFloat(rawFare);
+
+        if (isNaN(parsedFare) || parsedFare <= 0 || rawFare === "" || rawFare === null) {
+          skippedRecords.push({
+            pnr: row.PNR || `Row #${index + 1}`,
+            train: row.Train || "Unknown",
+            class: row.Class || "",
+            rawFare: rawFare,
+            status: row.Status || "Unknown",
+            reason: "Invalid fare ('" + rawFare + "')"
+          });
+        } else {
+          validRecords.push({
+            PNR: row.PNR,
+            Train: row.Train,
+            Class: row.Class || "SL",
+            Fare: parsedFare,
+            Status: row.Status
+          });
+        }
+      });
+
+      updateUI();
+    }
+
+    // --- UI Update & Rendering Pipeline ---
+    function updateUI() {
+      // Data Cleaning Info
+      document.getElementById('dataStatusBadge').innerText = `${skippedRecords.length} Skipped (Invalid Fares)`;
+      document.getElementById('skippedCountBadge').innerText = skippedRecords.length;
+      document.getElementById('dataHealthSummary').innerText = 
+        `Valid records analysed: ${validRecords.length} | Cleaned & skipped: ${skippedRecords.length}`;
+
+      // Populate Warning Log
+      const warningLogsContainer = document.getElementById('warningLogsContainer');
+      if (skippedRecords.length === 0) {
+        warningLogsContainer.innerHTML = `<div class="text-emerald-400 p-2">✓ All records in file have valid numeric fares. No warnings!</div>`;
+      } else {
+        warningLogsContainer.innerHTML = skippedRecords.map(item => `
+          <div class="p-2 rounded bg-slate-900 border border-amber-500/20 text-amber-300 flex items-center justify-between">
+            <span>Warning: Row with PNR <strong>${item.pnr}</strong> skipped - invalid fare ('${item.rawFare}').</span>
+            <span class="text-[10px] text-slate-500">${item.train}</span>
+          </div>
+        `).join('');
+      }
+
+      // Calculations
+      const totalBookings = validRecords.length;
+      const confirmedTickets = validRecords.filter(r => r.Status === 'Confirmed');
+      const totalConfirmedRevenue = confirmedTickets.reduce((acc, r) => acc + r.Fare, 0);
+      const uniqueTrains = [...new Set(validRecords.map(r => r.Train))];
+      const confirmRate = totalBookings > 0 ? Math.round((confirmedTickets.length / totalBookings) * 100) : 0;
+
+      // Animate Counters
+      animateCounter('kpiTotalBookings', totalBookings);
+      animateCounter('kpiTotalRevenue', Math.round(totalConfirmedRevenue));
+      animateCounter('kpiTrainCount', uniqueTrains.length);
+      document.getElementById('kpiConfirmRate').innerText = `${confirmRate}%`;
+      document.getElementById('kpiConfirmCount').innerText = `(${confirmedTickets.length} / ${totalBookings})`;
+
+      // Mini status bar
+      const waitingCount = validRecords.filter(r => r.Status === 'Waiting').length;
+      const cancelledCount = validRecords.filter(r => r.Status === 'Cancelled').length;
+      const confirmPct = totalBookings > 0 ? (confirmedTickets.length / totalBookings) * 100 : 0;
+      const waitPct = totalBookings > 0 ? (waitingCount / totalBookings) * 100 : 0;
+      const cancelPct = totalBookings > 0 ? (cancelledCount / totalBookings) * 100 : 0;
+
+      document.getElementById('miniBarConfirmed').style.width = `${confirmPct}%`;
+      document.getElementById('miniBarWaiting').style.width = `${waitPct}%`;
+      document.getElementById('miniBarCancelled').style.width = `${cancelPct}%`;
+
+      // Render Tabs
+      renderBookingsTab();
+      renderRevenueTab();
+      renderStatusOverview();
+      renderStatusPerTrain();
+      renderRawDataTable();
+    }
+
+    // --- Tab 1: Bookings per Train (Option 1) ---
+    function renderBookingsTab() {
+      const counts = {};
+      validRecords.forEach(r => {
+        counts[r.Train] = (counts[r.Train] || 0) + 1;
+      });
+
+      const totalBookings = validRecords.length;
+      document.getElementById('tab1TotalCount').innerText = totalBookings;
+
+      const sortedTrains = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+      const maxCount = sortedTrains.length > 0 ? Math.max(...Object.values(counts)) : 1;
+
+      const container = document.getElementById('bookingsChartContainer');
+      if (sortedTrains.length === 0) {
+        container.innerHTML = `<p class="text-slate-500 text-sm">No valid bookings found.</p>`;
+        return;
+      }
+
+      container.innerHTML = sortedTrains.map((train, idx) => {
+        const count = counts[train];
+        const pct = ((count / totalBookings) * 100).toFixed(1);
+        const barWidthPct = Math.max(5, (count / maxCount) * 100);
+        const rankColor = idx === 0 ? 'text-amber-400 bg-amber-500/10 border-amber-500/30' : 
+                          idx === 1 ? 'text-slate-300 bg-slate-700/30 border-slate-600' :
+                          idx === 2 ? 'text-amber-600 bg-amber-700/10 border-amber-700/30' : 'text-slate-400 bg-slate-800';
+
+        return `
+          <div class="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-sky-500/40 transition group">
+            <div class="flex items-center justify-between gap-2 mb-2 text-xs md:text-sm">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-md flex items-center justify-center font-mono font-bold text-xs ${rankColor} border">
+                  #${idx + 1}
+                </span>
+                <span class="font-bold text-slate-200 group-hover:text-sky-300 transition">${train}</span>
+              </div>
+              <div class="flex items-center gap-3 font-mono">
+                <span class="text-xs text-slate-400">${pct}% share</span>
+                <span class="px-2.5 py-0.5 rounded-md bg-sky-500/20 text-sky-300 font-bold border border-sky-500/30">
+                  ${count} bookings
+                </span>
+              </div>
+            </div>
+            <!-- Progress Bar -->
+            <div class="w-full bg-slate-800/80 rounded-full h-3 overflow-hidden p-0.5">
+              <div class="bg-gradient-to-r from-sky-500 to-indigo-500 h-full rounded-full bar-transition shadow-sm" style="width: ${barWidthPct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // --- Tab 2: Revenue per Train (Confirmed Only) (Option 2) ---
+    function renderRevenueTab() {
+      const confirmed = validRecords.filter(r => r.Status === "Confirmed");
+      const revenueMap = {};
+
+      confirmed.forEach(r => {
+        revenueMap[r.Train] = (revenueMap[r.Train] || 0) + r.Fare;
+      });
+
+      // Sort descending (biggest first, matching Python script)
+      const sortedTrains = Object.keys(revenueMap).sort((a, b) => revenueMap[b] - revenueMap[a]);
+      const totalRevenue = Object.values(revenueMap).reduce((a, b) => a + b, 0);
+      const maxRev = sortedTrains.length > 0 ? Math.max(...Object.values(revenueMap)) : 1;
+
+      document.getElementById('tab2TotalRevenue').innerText = `₹ ${Math.round(totalRevenue).toLocaleString('en-IN')}`;
+
+      const container = document.getElementById('revenueChartContainer');
+      if (sortedTrains.length === 0) {
+        container.innerHTML = `<p class="text-slate-500 text-sm">No confirmed tickets found.</p>`;
+        return;
+      }
+
+      container.innerHTML = sortedTrains.map((train, idx) => {
+        const rev = revenueMap[train];
+        const barWidthPct = Math.max(5, (rev / maxRev) * 100);
+        const sharePct = totalRevenue > 0 ? ((rev / totalRevenue) * 100).toFixed(1) : 0;
+        const confirmedCount = confirmed.filter(r => r.Train === train).length;
+
+        return `
+          <div class="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-emerald-500/40 transition group">
+            <div class="flex items-center justify-between gap-2 mb-2 text-xs md:text-sm">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-md flex items-center justify-center font-mono font-bold text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                  ${idx + 1}
+                </span>
+                <span class="font-bold text-slate-200 group-hover:text-emerald-300 transition">${train}</span>
+                <span class="text-[11px] text-slate-400 hidden sm:inline">(${confirmedCount} confirmed)</span>
+              </div>
+              <div class="flex items-center gap-3 font-mono">
+                <span class="text-xs text-slate-400">${sharePct}% rev</span>
+                <span class="px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                  Rs. ${Math.round(rev).toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
+            <!-- Animated Green/Gold Bar -->
+            <div class="w-full bg-slate-800/80 rounded-full h-3 overflow-hidden p-0.5">
+              <div class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full bar-transition shadow-sm" style="width: ${barWidthPct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // --- Tab 3: Tickets by Status (Option 3) ---
+    function renderStatusOverview() {
+      const total = validRecords.length;
+      const confirmed = validRecords.filter(r => r.Status === "Confirmed").length;
+      const waiting = validRecords.filter(r => r.Status === "Waiting").length;
+      const cancelled = validRecords.filter(r => r.Status === "Cancelled").length;
+
+      document.getElementById('statAllConfirmed').innerText = confirmed;
+      document.getElementById('statAllConfirmedPct').innerText = total ? `${((confirmed/total)*100).toFixed(1)}% of total` : '0%';
+
+      document.getElementById('statAllWaiting').innerText = waiting;
+      document.getElementById('statAllWaitingPct').innerText = total ? `${((waiting/total)*100).toFixed(1)}% of total` : '0%';
+
+      document.getElementById('statAllCancelled').innerText = cancelled;
+      document.getElementById('statAllCancelledPct').innerText = total ? `${((cancelled/total)*100).toFixed(1)}% of total` : '0%';
+    }
+
+    function renderStatusPerTrain() {
+      const query = (document.getElementById('trainStatusSearch').value || '').toLowerCase();
+      const uniqueTrains = [...new Set(validRecords.map(r => r.Train))].sort();
+      const container = document.getElementById('trainStatusListContainer');
+
+      const filteredTrains = uniqueTrains.filter(t => t.toLowerCase().includes(query));
+
+      if (filteredTrains.length === 0) {
+        container.innerHTML = `<div class="col-span-2 text-slate-500 text-sm py-4">No matching trains found.</div>`;
+        return;
+      }
+
+      container.innerHTML = filteredTrains.map(train => {
+        const trainRecords = validRecords.filter(r => r.Train === train);
+        const conf = trainRecords.filter(r => r.Status === "Confirmed").length;
+        const wait = trainRecords.filter(r => r.Status === "Waiting").length;
+        const canc = trainRecords.filter(r => r.Status === "Cancelled").length;
+        const total = trainRecords.length;
+
+        const confPct = total ? (conf / total) * 100 : 0;
+        const waitPct = total ? (wait / total) * 100 : 0;
+        const cancPct = total ? (canc / total) * 100 : 0;
+
+        return `
+          <div class="p-4 rounded-xl bg-slate-900/70 border border-slate-800 hover:border-slate-700 transition">
+            <div class="flex items-center justify-between mb-3">
+              <span class="font-bold text-slate-200 text-sm">${train}</span>
+              <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">Total: ${total}</span>
+            </div>
+
+            <!-- Segmented bar -->
+            <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden flex mb-3">
+              <div class="bg-emerald-400 h-full transition-all" style="width: ${confPct}%" title="Confirmed: ${conf}"></div>
+              <div class="bg-amber-400 h-full transition-all" style="width: ${waitPct}%" title="Waiting: ${wait}"></div>
+              <div class="bg-rose-500 h-full transition-all" style="width: ${cancPct}%" title="Cancelled: ${canc}"></div>
+            </div>
+
+            <!-- Stats badges matching Python output format -->
+            <div class="flex items-center justify-between text-xs font-mono">
+              <span class="text-emerald-400">Confirmed: <strong>${conf}</strong></span>
+              <span class="text-amber-400">Waiting: <strong>${wait}</strong></span>
+              <span class="text-rose-400">Cancelled: <strong>${canc}</strong></span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // --- Tab 4: Raw Table & Data Inspector ---
+    function renderRawDataTable() {
+      const q = (document.getElementById('pnrFilterInput').value || '').toLowerCase();
+      const statusFilter = document.getElementById('statusFilterSelect').value;
+      const tbody = document.getElementById('rawTableBody');
+
+      let filtered = validRecords.filter(r => {
+        const matchesQ = String(r.PNR).toLowerCase().includes(q) || 
+                         r.Train.toLowerCase().includes(q) ||
+                         (r.Class && r.Class.toLowerCase().includes(q));
+        const matchesStatus = statusFilter === 'ALL' || r.Status === statusFilter;
+        return matchesQ && matchesStatus;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">No records matching search.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map((r, i) => {
+        const statusBadge = 
+          r.Status === 'Confirmed' ? '<span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Confirmed</span>' :
+          r.Status === 'Waiting'   ? '<span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">Waiting</span>' :
+                                     '<span class="px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 border border-rose-500/30">Cancelled</span>';
+
+        return `
+          <tr class="hover:bg-slate-800/50 transition">
+            <td class="p-3 text-slate-500">${i + 1}</td>
+            <td class="p-3 font-semibold text-slate-200">${r.PNR}</td>
+            <td class="p-3 text-slate-300">${r.Train}</td>
+            <td class="p-3 text-sky-400 font-semibold">${r.Class || 'SL'}</td>
+            <td class="p-3 text-emerald-300 font-bold">₹${r.Fare.toLocaleString('en-IN')}</td>
+            <td class="p-3">${statusBadge}</td>
+            <td class="p-3 text-right">
+              <button onclick="deleteRecord('${r.PNR}')" class="text-slate-500 hover:text-rose-400 transition" title="Delete record">🗑</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // --- Tab Navigation Logic ---
+    function switchTab(tabId) {
+      ['tab-bookings', 'tab-revenue', 'tab-status', 'tab-data'].forEach(id => {
+        const el = document.getElementById(id);
+        const btn = document.getElementById('btn-' + id);
+        if (id === tabId) {
+          el.classList.remove('hidden');
+          btn.classList.add('active');
+        } else {
+          el.classList.add('hidden');
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    // --- Counter Animation ---
+    function animateCounter(elemId, targetVal) {
+      const el = document.getElementById(elemId);
+      if (!el) return;
+      const start = 0;
+      const duration = 800;
+      const startTime = performance.now();
+
+      function step(currentTime) {
+        const progress = Math.min((currentTime - startTime) / duration, 1);
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        const currentVal = Math.round(start + (targetVal - start) * easeOut);
+        el.innerText = currentVal.toLocaleString('en-IN');
+        if (progress < 1) {
+          requestAnimationFrame(step);
+        }
+      }
+      requestAnimationFrame(step);
+    }
+
+    // --- Add New Booking Modal Operations ---
+    function openAddBookingModal() {
+      document.getElementById('addBookingModal').classList.remove('hidden');
+    }
+    function closeAddBookingModal() {
+      document.getElementById('addBookingModal').classList.add('hidden');
+      document.getElementById('addBookingForm').reset();
+    }
+    
+    async function handleNewBookingSubmit(e) {
+      e.preventDefault();
+      const pnr = document.getElementById('newPnr').value.trim();
+      const train = document.getElementById('newTrain').value.trim();
+      const tClass = document.getElementById('newClass').value.trim();
+      const fare = document.getElementById('newFare').value.trim();
+      const status = document.getElementById('newStatus').value;
+
+      // Try sending to Python backend API if available
+      try {
+        const res = await fetch('/api/add_booking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pnr, train, class: tClass, fare, status })
+        });
+        const resData = await res.json();
+        if (resData.success) {
+          showToast("Booking saved to bookings.csv!", "success");
+        }
+      } catch (err) {
+        // Fallback for standalone / client-side operation
+      }
+
+      rawRecords.push({ PNR: pnr, Train: train, Class: tClass, Fare: fare, Status: status });
+      processDataset(rawRecords);
+      closeAddBookingModal();
+      showToast("Reservation record added & processed!", "success");
+    }
+
+    function deleteRecord(pnr) {
+      rawRecords = rawRecords.filter(r => String(r.PNR) !== String(pnr));
+      processDataset(rawRecords);
+      showToast("Record removed.", "info");
+    }
+
+    function toggleWarningLogModal() {
+      const modal = document.getElementById('warningModal');
+      modal.classList.toggle('hidden');
+    }
+
+    // --- File Upload / Reset Operations ---
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        const parsed = parseCsvString(text);
+        if (parsed.length > 0) {
+          processDataset(parsed);
+          showToast(`Loaded ${parsed.length} records from ${file.name}`, "success");
+        } else {
+          showToast("CSV format is empty or unreadable", "error");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function resetDefaultData() {
+      const parsed = parseCsvString(DEFAULT_CSV_TEXT);
+      processDataset(parsed);
+      showToast("Default bookings.csv demo data restored!", "info");
+    }
+
+    function downloadCleanedCsv() {
+      let csv = "PNR,Train,Class,Fare,Status\n";
+      validRecords.forEach(r => {
+        csv += `${r.PNR},"${r.Train}","${r.Class || 'SL'}",${r.Fare},${r.Status}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", "cleaned_bookings.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast("Cleaned CSV file downloaded!", "success");
+    }
+
+    function showToast(msg, type = "info") {
+      const toast = document.getElementById('toast');
+      const icon = document.getElementById('toastIcon');
+      document.getElementById('toastMsg').innerText = msg;
+      icon.innerText = type === "success" ? "✓" : type === "error" ? "⚠️" : "📢";
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 2500);
+    }
+
+    // =========================================================================
+    // 60FPS RAILWAY ANIMATION ENGINE (HTML5 CANVAS)
+    // =========================================================================
+    const canvas = document.getElementById('railwayCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let trainSpeedKmh = 110;
+    let trackOffset = 0;
+    let sceneryOffset = 0;
+    let mountainsOffset = 0;
+    let wheelRotation = 0;
+    let sparkParticles = [];
+    let signalState = 'green';
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function setTrainSpeed(kmh) {
+      trainSpeedKmh = kmh;
+      document.getElementById('speedDisplay').innerText = `${kmh} km/h`;
+      
+      ['spd0', 'spd40', 'spd110', 'spd180'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (id === `spd${kmh}`) {
+          btn.className = "px-2.5 py-1 rounded-lg bg-sky-500/20 text-sky-300 font-semibold border border-sky-500/40 transition";
+        } else {
+          btn.className = "px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition";
+        }
+      });
+
+      if (kmh === 0) {
+        signalState = 'red';
+        document.getElementById('signalStatusText').innerText = "STOP (RED)";
+        document.getElementById('signalStatusText').className = "font-bold text-rose-400 uppercase tracking-wide";
+      } else if (kmh <= 40) {
+        signalState = 'yellow';
+        document.getElementById('signalStatusText').innerText = "CAUTION (AMBER)";
+        document.getElementById('signalStatusText').className = "font-bold text-amber-400 uppercase tracking-wide";
+      } else {
+        signalState = 'green';
+        document.getElementById('signalStatusText').innerText = "CLEAR (GREEN)";
+        document.getElementById('signalStatusText').className = "font-bold text-emerald-400 uppercase tracking-wide";
+      }
+    }
+
+    function renderRailwayFrame() {
+      const w = canvas.width;
+      const h = canvas.height;
+      const dpr = window.devicePixelRatio || 1;
+      const speedFactor = (trainSpeedKmh / 100) * dpr;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // 1. Stars & Moon
+      ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+      for (let i = 0; i < 25; i++) {
+        const sx = ((i * 137.5) % w);
+        const sy = ((i * 89.3) % (h * 0.45));
+        ctx.fillRect(sx, sy, 1.5 * dpr, 1.5 * dpr);
+      }
+
+      const moonX = w * 0.88;
+      const moonY = h * 0.22;
+      const moonRad = 18 * dpr;
+      ctx.save();
+      const moonGlow = ctx.createRadialGradient(moonX, moonY, moonRad * 0.5, moonX, moonY, moonRad * 2.5);
+      moonGlow.addColorStop(0, "rgba(224, 242, 254, 0.35)");
+      moonGlow.addColorStop(1, "rgba(224, 242, 254, 0)");
+      ctx.fillStyle = moonGlow;
+      ctx.beginPath();
+      ctx.arc(moonX, moonY, moonRad * 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#f8fafc";
+      ctx.beginPath();
+      ctx.arc(moonX, moonY, moonRad, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // 2. Mountains
+      mountainsOffset = (mountainsOffset + speedFactor * 0.3) % w;
+      ctx.fillStyle = "#0c1527";
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.7);
+      for (let x = 0; x <= w; x += 60 * dpr) {
+        const wave = Math.sin((x + mountainsOffset) * 0.003) * 35 * dpr + Math.cos((x + mountainsOffset) * 0.007) * 20 * dpr;
+        ctx.lineTo(x, h * 0.52 + wave);
+      }
+      ctx.lineTo(w, h * 0.75);
+      ctx.lineTo(0, h * 0.75);
+      ctx.closePath();
+      ctx.fill();
+
+      // Midground Trees
+      sceneryOffset = (sceneryOffset + speedFactor * 1.2) % w;
+      ctx.fillStyle = "#101d38";
+      for (let i = -1; i < 8; i++) {
+        const treeX = ((i * 220 * dpr) - sceneryOffset + w * 2) % (w + 200 * dpr) - 50 * dpr;
+        ctx.beginPath();
+        ctx.arc(treeX, h * 0.65, 22 * dpr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Railway Signal Mast
+      const signalX = ((w * 0.75 - trackOffset * 0.8) % (w + 400 * dpr));
+      const signalBaseY = h * 0.75;
+      ctx.fillStyle = "#334155";
+      ctx.fillRect(signalX, signalBaseY - 70 * dpr, 4 * dpr, 70 * dpr);
+      
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(signalX - 6 * dpr, signalBaseY - 75 * dpr, 16 * dpr, 36 * dpr);
+      
+      const lampRed = signalState === 'red' ? '#ef4444' : '#450a0a';
+      const lampYellow = signalState === 'yellow' ? '#f59e0b' : '#451a03';
+      const lampGreen = signalState === 'green' ? '#10b981' : '#022c22';
+
+      ctx.fillStyle = lampRed;
+      ctx.beginPath(); ctx.arc(signalX + 2 * dpr, signalBaseY - 67 * dpr, 3.5 * dpr, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = lampYellow;
+      ctx.beginPath(); ctx.arc(signalX + 2 * dpr, signalBaseY - 57 * dpr, 3.5 * dpr, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = lampGreen;
+      ctx.beginPath(); ctx.arc(signalX + 2 * dpr, signalBaseY - 47 * dpr, 3.5 * dpr, 0, Math.PI * 2); ctx.fill();
+
+      // 3. Track Bed & Sleepers
+      const trackY = h * 0.76;
+      trackOffset = (trackOffset + speedFactor * 5) % (30 * dpr);
+
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(0, trackY - 2 * dpr, w, h - trackY + 2 * dpr);
+
+      ctx.fillStyle = "#1e293b";
+      for (let x = -trackOffset; x < w; x += 26 * dpr) {
+        ctx.fillRect(x, trackY + 4 * dpr, 14 * dpr, 8 * dpr);
+      }
+
+      ctx.fillStyle = "#64748b";
+      ctx.fillRect(0, trackY, w, 4 * dpr);
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillRect(0, trackY, w, 1.5 * dpr);
+
+      ctx.fillStyle = "#475569";
+      ctx.fillRect(0, trackY + 12 * dpr, w, 2 * dpr);
+
+      // 4. Overhead Catenary Wire
+      ctx.strokeStyle = "rgba(100, 116, 139, 0.45)";
+      ctx.lineWidth = 1 * dpr;
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.28);
+      ctx.lineTo(w, h * 0.28);
+      ctx.stroke();
+
+      for (let x = -((trackOffset * 2) % (280 * dpr)); x < w; x += 280 * dpr) {
+        ctx.fillStyle = "rgba(71, 85, 105, 0.5)";
+        ctx.fillRect(x, h * 0.2, 4 * dpr, trackY - h * 0.2);
+        ctx.fillRect(x - 12 * dpr, h * 0.28, 28 * dpr, 2.5 * dpr);
+      }
+
+      // 5. Locomotive + Coaches
+      const trainY = trackY - 42 * dpr;
+      const trainStartX = w * 0.32;
+
+      drawCoach(trainStartX - 280 * dpr, trainY, 130 * dpr, 36 * dpr, "2nd AC", dpr);
+      drawCoach(trainStartX - 140 * dpr, trainY, 130 * dpr, 36 * dpr, "1st AC", dpr);
+
+      ctx.fillStyle = "#1e293b";
+      ctx.fillRect(trainStartX - 150 * dpr, trainY + 22 * dpr, 10 * dpr, 5 * dpr);
+      ctx.fillRect(trainStartX - 10 * dpr, trainY + 22 * dpr, 10 * dpr, 5 * dpr);
+
+      drawLocomotive(trainStartX, trainY, 160 * dpr, 40 * dpr, dpr);
+
+      wheelRotation += speedFactor * 0.15;
+
+      if (trainSpeedKmh > 50 && Math.random() < 0.15) {
+        sparkParticles.push({
+          x: trainStartX + 42 * dpr,
+          y: h * 0.28,
+          vx: (Math.random() - 0.5) * 4 * dpr - speedFactor,
+          vy: Math.random() * 2 * dpr - 1,
+          life: 1.0
+        });
+      }
+
+      for (let i = sparkParticles.length - 1; i >= 0; i--) {
+        const p = sparkParticles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.05;
+        if (p.life <= 0) {
+          sparkParticles.splice(i, 1);
+        } else {
+          ctx.fillStyle = `rgba(56, 189, 248, ${p.life})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 2 * dpr, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      requestAnimationFrame(renderRailwayFrame);
+    }
+
+    function drawCoach(x, y, width, height, label, dpr) {
+      const grad = ctx.createLinearGradient(x, y, x, y + height);
+      grad.addColorStop(0, "#1e3a8a");
+      grad.addColorStop(0.5, "#2563eb");
+      grad.addColorStop(1, "#1d4ed8");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.roundRect(x, y, width, height, 4 * dpr);
+      ctx.fill();
+
+      ctx.fillStyle = "#fbbf24";
+      ctx.fillRect(x, y + height * 0.62, width, 4 * dpr);
+
+      ctx.fillStyle = "#fef08a";
+      const winW = 14 * dpr;
+      const winH = 11 * dpr;
+      for (let wx = x + 10 * dpr; wx < x + width - 15 * dpr; wx += 20 * dpr) {
+        ctx.fillRect(wx, y + 8 * dpr, winW, winH);
+        ctx.fillStyle = "rgba(30, 41, 59, 0.75)";
+        ctx.beginPath();
+        ctx.arc(wx + winW * 0.5, y + 16 * dpr, 3 * dpr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#fef08a";
+      }
+
+      drawBogieWheels(x + 18 * dpr, y + height + 2 * dpr, dpr);
+      drawBogieWheels(x + width - 36 * dpr, y + height + 2 * dpr, dpr);
+    }
+
+    function drawLocomotive(x, y, width, height, dpr) {
+      const bodyGrad = ctx.createLinearGradient(x, y, x + width, y);
+      bodyGrad.addColorStop(0, "#0284c7");
+      bodyGrad.addColorStop(0.7, "#0369a1");
+      bodyGrad.addColorStop(1, "#0c4a6e");
+      ctx.fillStyle = bodyGrad;
+
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + width - 25 * dpr, y);
+      ctx.quadraticCurveTo(x + width, y + 10 * dpr, x + width, y + height);
+      ctx.lineTo(x, y + height);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = "#f8fafc";
+      ctx.fillRect(x, y + height * 0.5, width - 8 * dpr, 5 * dpr);
+
+      ctx.fillStyle = "#dc2626";
+      ctx.fillRect(x + width - 6 * dpr, y + height - 8 * dpr, 10 * dpr, 8 * dpr);
+
+      ctx.fillStyle = "#38bdf8";
+      ctx.beginPath();
+      ctx.moveTo(x + width - 32 * dpr, y + 6 * dpr);
+      ctx.lineTo(x + width - 10 * dpr, y + 15 * dpr);
+      ctx.lineTo(x + width - 12 * dpr, y + 24 * dpr);
+      ctx.lineTo(x + width - 35 * dpr, y + 24 * dpr);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = "#94a3b8";
+      ctx.lineWidth = 2 * dpr;
+      ctx.beginPath();
+      ctx.moveTo(x + 28 * dpr, y);
+      ctx.lineTo(x + 36 * dpr, y - 22 * dpr);
+      ctx.lineTo(x + 48 * dpr, y - 42 * dpr);
+      ctx.lineTo(x + 40 * dpr, y);
+      ctx.stroke();
+
+      ctx.strokeStyle = "#e2e8f0";
+      ctx.lineWidth = 3 * dpr;
+      ctx.beginPath();
+      ctx.moveTo(x + 38 * dpr, y - 42 * dpr);
+      ctx.lineTo(x + 58 * dpr, y - 42 * dpr);
+      ctx.stroke();
+
+      const headX = x + width;
+      const headY = y + height * 0.65;
+      
+      const beamGrad = ctx.createRadialGradient(headX, headY, 2 * dpr, headX + 160 * dpr, headY, 180 * dpr);
+      beamGrad.addColorStop(0, "rgba(254, 240, 138, 0.85)");
+      beamGrad.addColorStop(0.3, "rgba(254, 240, 138, 0.25)");
+      beamGrad.addColorStop(1, "rgba(254, 240, 138, 0)");
+      ctx.fillStyle = beamGrad;
+      ctx.beginPath();
+      ctx.moveTo(headX, headY - 3 * dpr);
+      ctx.lineTo(headX + 220 * dpr, headY - 30 * dpr);
+      ctx.lineTo(headX + 220 * dpr, headY + 45 * dpr);
+      ctx.lineTo(headX, headY + 5 * dpr);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(headX, headY, 3.5 * dpr, 0, Math.PI * 2);
+      ctx.fill();
+
+      drawBogieWheels(x + 24 * dpr, y + height + 2 * dpr, dpr);
+      drawBogieWheels(x + width - 45 * dpr, y + height + 2 * dpr, dpr);
+    }
+
+    function drawBogieWheels(bx, by, dpr) {
+      const radius = 6.5 * dpr;
+      [0, 18 * dpr].forEach(offset => {
+        const wx = bx + offset;
+        ctx.save();
+        ctx.translate(wx, by);
+        ctx.rotate(wheelRotation);
+
+        ctx.fillStyle = "#334155";
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "#94a3b8";
+        ctx.lineWidth = 1.5 * dpr;
+        ctx.stroke();
+
+        ctx.strokeStyle = "#64748b";
+        ctx.lineWidth = 1 * dpr;
+        ctx.beginPath();
+        ctx.moveTo(-radius, 0); ctx.lineTo(radius, 0);
+        ctx.moveTo(0, -radius); ctx.lineTo(0, radius);
+        ctx.stroke();
+
+        ctx.restore();
+      });
+    }
+
+    // --- Kickstart Application: Try fetching from /api/data, fallback to embedded CSV ---
+    async function initApp() {
+      try {
+        const res = await fetch('/api/data');
+        if (res.ok) {
+          const apiData = await res.json();
+          if (apiData.valid_records && apiData.valid_records.length > 0) {
+            // Populate directly from Python backend
+            const combined = [
+              ...apiData.valid_records.map(r => ({ PNR: r.pnr, Train: r.train, Class: r.class, Fare: r.fare, Status: r.status })),
+              ...apiData.skipped_records.map(r => ({ PNR: r.pnr, Train: r.train, Class: r.class, Fare: r.raw_fare, Status: r.status }))
+            ];
+            processDataset(combined);
+            requestAnimationFrame(renderRailwayFrame);
+            return;
+          }
+        }
+      } catch (e) {
+        // Fallback to local embedded demo data if opened directly from file system
+      }
+
+      const defaultData = parseCsvString(DEFAULT_CSV_TEXT);
+      processDataset(defaultData);
+      requestAnimationFrame(renderRailwayFrame);
+    }
+
+    window.addEventListener('DOMContentLoaded', initApp);
+
+  </script>
+</body>
+</html>
